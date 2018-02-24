@@ -3,6 +3,7 @@
 var abstract = require("./abstract");
 var Redis = require("../../").persistence.Redis;
 var redis = require("ioredis");
+var steed = require("steed");
 
 describe("mosca.persistence.Redis", function() {
 
@@ -11,7 +12,8 @@ describe("mosca.persistence.Redis", function() {
   var opts = {
     ttl: {
       subscriptions: 1000,
-      packets: 200
+      packets: 200,
+      retained: 200
     }
   };
 
@@ -249,7 +251,81 @@ describe("mosca.persistence.Redis", function() {
 
   });
 
+  describe("ttl for retained messages", function() {
+    it("should store a retained message with ttl", function(done) {
+      var packet = {
+        topic: "hello",
+        qos: 1,
+        payload: new Buffer("world"),
+        messageId: "42",
+        ttl: 1, // 1000 ms
+        retain: true
+      };
 
+      var instance = this.instance;
+
+      steed.series([
+        function(cb) {
+          instance.storeRetained(packet, cb);
+        },
+        function(cb) {
+          instance.lookupRetained("hello", function(err, results) {
+            expect(results[0].topic).to.eql(packet.topic);
+            expect(results[0].payload).to.eql(packet.payload);
+            cb();
+          });
+        },
+        function(cb) {
+          setTimeout(function() {
+            instance.lookupRetained("hello", function(err, results) {
+              expect(results[0]).to.be.undefined;
+              cb();
+            });
+          }, 2000);
+        }
+      ], done);
+    });
+
+    it("should store a retained message with ttl in payload", function(done) {
+      var payload = {
+        coreid: "device123",
+        data: "world",
+        ttl: 1, // 1000 ms
+        published_at: new Date()
+      };
+      var packet = {
+        topic: "hello",
+        qos: 1,
+        payload: new Buffer(JSON.stringify(payload)),
+        messageId: "42",
+        retain: true
+      };
+
+      var instance = this.instance;
+
+      steed.series([
+        function(cb) {
+          instance.storeRetained(packet, cb);
+        },
+        function(cb) {
+          instance.lookupRetained("hello", function(err, results) {
+            expect(results[0].topic).to.eql(packet.topic);
+            expect(results[0].payload).to.eql(packet.payload);
+            cb();
+          });
+        },
+        function(cb) {
+          setTimeout(function() {
+            instance.lookupRetained("hello", function(err, results) {
+              expect(results[0]).to.be.undefined;
+              cb();
+            });
+          }, 2000);
+        }
+      ], done);
+    });
+  });
+  
   describe("clustered.environment", function(){
 
     it("should forward each packet once after client reconnects", function(done) {
