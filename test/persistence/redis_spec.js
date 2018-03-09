@@ -251,7 +251,7 @@ describe("mosca.persistence.Redis", function() {
 
   });
 
-  describe("ttl for retained messages", function() {
+  /* describe("ttl for retained messages", function() {
     it("should store a retained message with ttl", function(done) {
       var packet = {
         topic: "hello",
@@ -325,7 +325,8 @@ describe("mosca.persistence.Redis", function() {
       ], done);
     });
   });
-  
+  */
+ 
   describe("clustered.environment", function(){
 
     it("should forward each packet once after client reconnects", function(done) {
